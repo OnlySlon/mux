@@ -82,11 +82,24 @@ typedef struct MUXIPCFG_S
 
 
 #define MUX_IF_NAME_LEN 32
-#define MUX_IF_F_SLAVE      0 
+#define MUX_IF_F_SLAVE        0 
 #define MUX_IF_F_MASTER       (1 << 0)
 #define MUX_IF_F_DISABLED     (1 << 1)
-#define MUX_IF_F_DISCOVERY    (1 << 2)
+#define MUX_IF_F_GWDISCOVERY  (1 << 2)
 #define MUX_IF_F_CLIENT       (1 << 3)
+#define MUX_IF_F_SRVDISCOVERY (1 << 4)
+
+
+typedef struct MUX_IF_STATS
+{
+	u_int64_t    tx_bytes;
+	u_int64_t    tx_packets;
+	u_int64_t    tx_rate;
+	u_int64_t    rx_bytes;
+	u_int64_t    rx_packets;
+	u_int64_t    rx_rate;
+} MuxIfStats;
+
 typedef struct MUX_IFS_S
 {
 	int                id;
@@ -136,23 +149,27 @@ typedef struct MUX_IFCONF_PLUGIN_S
     int        (*init_cb)  (void *priv);
     int        (*rx_cb)    (void *priv, char *pkt, u_int32_t len);
     int        (*get_info4)(void *priv, void *data, u_int32_t *len);
+
     void       *priv;            // private plugin data
 } MuxIfConf_t;
 
 
 
 /* transport plugin */
+
+
 typedef struct MUX_TR_PLUGIN
 {
-	u_int32_t  type;
-	char      *name;
-	int        (*tr_init)();
-	int        (*tr_send)(void *priv, char *pkt, int len);
-	int        (*tr_recv)(void *priv, char *pkt);
-	int        (*tr_ctl)(void *priv, u_int32_t op, void *op_val, int oplen);
-	void      *priv;
-};
-
+	u_int32_t   type;
+	char       *name;
+	int         (*tr_init)();
+	int         (*tr_send)(void *priv, char *pkt, int len);
+	int         (*tr_recv)(void *priv, char *pkt);
+	int         (*tr_ctl)(void *priv, u_int32_t op, void *op_val, int oplen);
+	int         (*tr_destroy)(void *priv);
+	u_int32_t    payload_offset;
+	void        *priv;
+} MuxTransport;
 
 
 struct fdb_record

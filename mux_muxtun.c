@@ -31,18 +31,19 @@ typedef struct Mux_Proto
 } MuxProtoTun;
 
 
-#defui
 
 
 // Multi-Tun side of tunnel
 typedef struct mux_muxtun
 {
-	u_int32_t          id_global;
+	int                id;
+	u_int16_t          id_global;
 	u_int32_t          ip_remote;
 	u_int32_t          ip_local;
 	u_int32_t          group;
 	u_int32_t          state;
-	UT_hash_handle     hh;
+	MuxTransport      *transport;
+	UT_hash_handle     hh;    
 } MuxMuxTun;
 
 
@@ -53,18 +54,89 @@ enum MuxMuxStates
 	MUX_MUXSTATE_UP,
 };
 
+MuxTransport MuxTransportRAW;
+
+
+MuxMuxTun *MuxTunDB = NULL;
+
+/*
+typedef struct MUX_IFCONF_PLUGIN_S
+{
+    u_int32_t  type;             // plugin type
+    char      *name;         // plugin name
+    char       bpf_filter[64];   // bpf filter for incoming traffic. Pass to plugin
+    int        (*init_cb)  (void *priv);
+    int        (*rx_cb)    (void *priv, char *pkt, u_int32_t len);
+    int        (*get_info4)(void *priv, void *data, u_int32_t *len);
+    
+    void       *priv;            // private plugin data
+} MuxIfConf_t;
+
+*/
+
+
+
+
+
+MuxMuxTun *mux_muxtun_new(MuxTransport *tr_type)
+{
+	static u_int16_t tunid = 0;
+	MuxMuxTun *s = NULL;
+	int key;
+	
+	// first generate  unique tunid
+	do
+	{
+		tunid = (u_int16_t) (rand32() & 0xFFFF);
+		key = (int) tunid;
+		HASH_FIND_INT(MuxTunDB, &key, s);
+	} while(s != NULL);
+
+	// get random tunid on start
+
+	s = (MuxMuxTun *) malloc(sizeof(MuxMuxTun));
+
+	s->transport = mux_transport_init(tr_type);
+	if (s == NULL)
+		goto rollback;
+
+	s->id          = (int) tunid;
+	s->id_global   = tunid;
+
+
+	
+	return s;
+
+	rollback:
+	{
+		if (s)
+			free(s);
+		return (MuxMuxTun *) NULL;
+	}
+}
 
 
 void mux_muxtun_match(MuxMuxTun *muxdb, char *pkt)
 {
 	MuxMuxTun *s;
 	struct in_addr ipaddr;
-	MuxProtoTun *hdr = (MuxProtoTun *) (pkt + 0);
+	struct ip_hdr *iphdr  =  (struct ip_hdr *) (pkt + SIZEOF_ETH_HDR);
+	u_int32_t tr_offset   = 0;
+
+	if (iphdr->_proto == IPPROTO_UDP)
+	{
+		tr_offset = SIZEOF_ETH_HDR + SIZEOF_IP_HDR + SIZEOF_UDP_HDR;
+	} else
+	{
+		tr_offset = SIZEOF_ETH_HDR + SIZEOF_IP_HDR;
+	}
+
+	MuxProtoTun *hdr = (MuxProtoTun *) (pkt + tr_offset);
+
 
 	int hash =  (int) ntohs(hdr->tun_id);
 
-
-	HASH_FIND_INT(muxdb, &hash, s); 
+	HASH_FIND_INT(MuxTunDB, &hash, s); 
 	if (s) 
 	{
 		// Tun with this ID exist
@@ -76,7 +148,7 @@ void mux_muxtun_match(MuxMuxTun *muxdb, char *pkt)
 
 	}
 
-	for (s=muxdb; s != NULL; s = (MuxMuxTun *)(s->hh.next))
+	for (s = muxdb; s != NULL; s = (MuxMuxTun *)(s->hh.next))
 	{
 
 	}

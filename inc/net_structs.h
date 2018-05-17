@@ -3,6 +3,8 @@
 #define ETH_HWADDR_LEN    6
 #define SIZEOF_ETH_HDR    14
 #define SIZEOF_VLAN_HDR   4
+#define SIZEOF_IP_HDR     20
+#define SIZEOF_UDP_HDR    8
 
 
 /* The 24-bit IANA IPv4-multicast OUI is 01-00-5e: */

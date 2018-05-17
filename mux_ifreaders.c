@@ -53,7 +53,7 @@ void mux_ether_input(MUXCTX *ctx, MuxIf_t *rif, char *pkt, u_int32_t len)
 		MuxIf_t *brif = NULL;
 		struct fdb_record *fr;
 
-		mux_discovery_sniff(rif, pkt, len);
+		mux_gwdiscovery_sniff(rif, pkt, len);
 
 
 		// store source address

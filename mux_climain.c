@@ -20,8 +20,9 @@
 CLOG_INFO *info;
 
 void mux_arpdb_service_1s();
-void mux_discovery_service_1s();
-
+void mux_gwdiscovery_service_1s();
+void mux_ipconf_service_1s();
+void mux_ifmgr_service_10s();
 void segv_handler(int sig);
 
 /* 
@@ -76,7 +77,7 @@ int main(int argc, char *argv[])
 	MuxIf_t *intbridge;
 	
 	// Setup master device. Enable IP discovery
-	masterdev = mux_ifmgr_add(ctx, "MASTER_ETH1", MUX_IF_RING, "master0", MUX_IF_F_MASTER | MUX_IF_F_DISCOVERY);
+	masterdev = mux_ifmgr_add(ctx, "MASTER_ETH1", MUX_IF_RING, "master0", MUX_IF_F_MASTER | MUX_IF_F_GWDISCOVERY);
 	if (!masterdev)
 	{
 		clog(info, CMARK, DBG_SYSTEM, "F:%s: Masterdev create fail", __FUNCTION__);
@@ -100,7 +101,7 @@ int main(int argc, char *argv[])
 
 
 
-	clientdev = mux_ifmgr_add(ctx, "CLIENT_ETH3", MUX_IF_RING, "client0", MUX_IF_F_SLAVE | MUX_IF_F_CLIENT | MUX_IF_F_DISCOVERY);
+	clientdev = mux_ifmgr_add(ctx, "CLIENT_ETH3", MUX_IF_RING, "client0", MUX_IF_F_SLAVE | MUX_IF_F_CLIENT | MUX_IF_F_GWDISCOVERY);
 	if (!clientdev)
 	{
 		clog(info, CMARK, DBG_SYSTEM, "F:%s: clientdev create fail", __FUNCTION__);
@@ -125,7 +126,7 @@ int main(int argc, char *argv[])
 	mux_ifmgr_setbridge(intbridge, BRIDGE_ID_MAIN);
 	
 
-	mux_ipconf_add(slavedev1, inet_addr("10.10.10.20"), 24, inet_addr("0.0.0.0"));
+	mux_ipconf_add(slavedev1, inet_addr("11.11.11.11"), 24, inet_addr("11.11.11.1"));
 //	printf(">>>>>>>>>>>> %p\n", testdev2->ip);
 
 
@@ -139,7 +140,10 @@ int main(int argc, char *argv[])
 	// Setup service timers
 	// ARP service timer 1 sec.
 	timer_add_ms("ARP_SERVICE", 1000, mux_arpdb_service_1s, NULL);
-	timer_add_ms("DISCOVERY_SERVICE", 1000, mux_discovery_service_1s, NULL);
+	timer_add_ms("GWDISCOVERY_SERVICE", 1000, mux_gwdiscovery_service_1s, NULL);
+	timer_add_ms("IPCONF_SERVICE", 1000, mux_ipconf_service_1s, NULL);
+	timer_add_ms("IFDEBUG_SERVICE", 1000, mux_ifmgr_service_10s, NULL);
+
 
 	while(1)
 	{
@@ -161,7 +165,7 @@ int main(int argc, char *argv[])
 
 		if ((counter%10) == 0) 
 		{
-			test_ip_send(slavedev1);
+			//test_ip_send(slavedev1);
 		}
 		timer_run();
 		counter++;

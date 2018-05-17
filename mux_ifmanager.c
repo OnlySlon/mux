@@ -13,6 +13,8 @@
 #include <time.h>
 #include <sys/socket.h>
 #include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
 // TUN/TAP
 #include <linux/if.h>
 #include <linux/if_tun.h>
@@ -58,6 +60,70 @@ char *mux_ifmgr_tpe(int type)
 	}
 	return "NEVER_HAPPENDS";
 }
+
+/*
+#define MUX_IF_F_MASTER       (1 << 0)
+#define MUX_IF_F_DISABLED     (1 << 1)
+#define MUX_IF_F_GWDISCOVERY  (1 << 2)
+#define MUX_IF_F_CLIENT       (1 << 3)
+#define MUX_IF_F_SRVDISCOVERY (1 << 4)
+*/
+
+char *mux_ifmgr_flags2string(u_int32_t f)
+{
+	static char str[512];
+	memset(str, 0, 512);
+	if (f & MUX_IF_F_MASTER)
+		strcat(str, "MASTER, ");
+	else
+		strcat(str, "SLAVE, ");
+
+	if (f & MUX_IF_F_DISABLED)
+		strcat(str, "DISABLED, ");
+	else
+		strcat(str, "ENABLED, ");
+
+	if (f & MUX_IF_F_GWDISCOVERY)    strcat(str, "GWDISCOVERY, ");
+	if (f & MUX_IF_F_CLIENT)         strcat(str, "CLIENT, ");
+	if (f & MUX_IF_F_SRVDISCOVERY)   strcat(str, "MUX_IF_F_SRVDISCOVERY, ");
+
+
+	if (strlen(str) > 0) str[strlen(str) - 2] = 0;
+
+	return str;
+}
+
+
+
+
+/* debug service */
+void mux_ifmgr_service_10s()
+{
+	MuxIf_t *s = NULL;
+	char brid[10];
+	clog(info, CMARK, DBG_TUNTAP, "--------------------------------------------------------'", __FUNCTION__);
+	for (s = ifdb; s != NULL; s = (struct MuxIf_t *)(s->hh.next))
+	{
+
+		snprintf(brid, 9, "Br%d", s->br_id);
+		clog(info, CERROR, DBG_TUNTAP, "%-12s  Type: %-15s  Bridge: %s", 
+			 s->name, 
+			 mux_ifmgr_tpe(s->type),
+			 s->br_id ? brid : "-Disabled-"); 
+
+		clog(info, CERROR, DBG_TUNTAP, "%-12s  Flags: %s", 
+				"", mux_ifmgr_flags2string(s->flags));
+
+		clog(info, CERROR, DBG_TUNTAP, "      ");
+
+
+	}
+	clog(info, CMARK, DBG_TUNTAP, "--------------------------------------------------------'", __FUNCTION__);
+
+	timer_add_ms("IFDEBUG_SERVICE", 5000, mux_ifmgr_service_10s, NULL);
+}
+
+
 
 int tun_alloc(char *dev, int flags) 
 {

@@ -219,6 +219,7 @@
 			<F N="mux_discovery.c"/>
 			<F N="mux_ether_arpdb.c"/>
 			<F N="mux_ethernet.c"/>
+			<F N="mux_gwdiscovery.c"/>
 			<F N="mux_ifcfg_manual.c"/>
 			<F N="mux_ifmanager.c"/>
 			<F N="mux_ifreaders.c"/>
@@ -228,6 +229,7 @@
 			<F N="mux_muxtun.c"/>
 			<F N="mux_poller.c"/>
 			<F N="mux_server.c"/>
+			<F N="mux_tr_raw.c"/>
 			<F N="mux_tr_udp.c"/>
 			<F N="mux_util.c"/>
 			<F N="timers.c"/>

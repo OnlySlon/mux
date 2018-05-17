@@ -490,3 +490,69 @@ char *mux_uuid()
 	return  strdup(file_uuid);
 }
 
+
+
+
+/* Transport util */
+
+MuxTransport *mux_transport_init(MuxTransport *tr_type)
+{
+	MuxTransport *tr = (MuxTransport *) malloc(sizeof(MuxTransport));
+	memset(tr, 0, sizeof(MuxTransport));
+	memcpy(tr, tr_type, sizeof(MuxTransport));
+	tr->priv = 0;
+	if (tr->tr_init() == 0)
+		return tr;
+
+	free(tr);
+	return (MuxTransport *) NULL;
+
+}
+
+void mux_transport_destroy(MuxTransport *tr)
+{
+	if (!tr) return;
+	if (tr->tr_destroy)
+		tr->tr_destroy(tr->priv);
+	free(tr);
+}
+
+
+
+/* Humanization :) */
+
+
+/* human-readable size */
+void human_size(char *buf, int size, u_int64_t bytes)
+{
+        int i;
+        char unit[] = "bKMGT";
+        for (i = 0; bytes >= 10000 && unit[i] != 'T'; i++)
+                bytes = (bytes + 512) / 1024;
+        snprintf(buf, size, "%lu%c%s", (unsigned long) bytes, unit[i], i ? "B" : " ");
+}
+
+
+/* human-readable rate */
+void human_rate(char *buf, int len, u_int32_t rate)
+{
+        double tmp = (double) rate * 8;
+        int use_iec = 0;
+        if (use_iec)
+        {
+                if (tmp >= 1000.0*1024.0*1024.0)
+                        snprintf(buf, len, "%.0fMibit", tmp/(1024.0*1024.0));
+                else if (tmp >= 1000.0*1024)
+                        snprintf(buf, len, "%.0fKibit", tmp/1024);
+                else
+                        snprintf(buf, len, "%.0fbit", tmp);
+        }
+        else
+        {
+                if (tmp >= 100.0*10000.0)
+                        snprintf(buf, len, "%.1fMbit", tmp/1000000.0);
+                else
+                        snprintf(buf, len, "%.1fKbit", tmp/1000.0);
+        }
+}
+
