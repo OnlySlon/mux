@@ -58,6 +58,21 @@ int mux_ip_output_if(MuxIf_t     *txif,
 	ip->src      = htonl(src);
 	ip->_chksum  = in_cksum((char *) ip, IP_HLEN);
 
+	// automatic set source address 
+	if(src == 0)
+	{
+		if (txif->flags & MUX_IF_F_GWDISCOVERY)
+		{
+			MuxGwDiscovery *gwd = mux_gwdiscovery_get(txif);
+			if (gwd)
+				ip->src = htonl(gwd->cli_ip.s_addr);
+		} else
+		{
+			if (txif->ip)
+				ip->src = htonl(txif->ip->ipaddr);
+		}
+	}
+
 	/*
 		IP hdr is cooked. Now we should resolve destination HW addr
 	*/

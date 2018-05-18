@@ -51,6 +51,45 @@ GW2<-> E1----SLAVE----> |                |
  
 */ 
 
+extern MuxTransport MuxTransportRAW;
+
+void mux_clihandshake_service_1s(void *ptr)
+{
+	static int init = 1;
+	static   MuxTransport *tr = NULL;
+
+	if (init == 1)
+	{
+		init = 0;
+		MuxIf_t *dif;
+		clog(info, CMARK, DBG_SYSTEM, "F:%s: Init handshake transport....", __FUNCTION__);
+		tr = mux_transport_init(&MuxTransportRAW);
+		mux_ifmgr_itreset();
+
+		while((dif = mux_ifmgr_it_next()) != NULL)
+		{			
+			if (dif->flags & MUX_IF_F_MASTER ) // do it only on MASTER interface
+			{
+				char *tmp = malloc(0xFFF);
+				char *pkt = tmp + SIZEOF_ETH_HDR + SIZEOF_IP_HDR;
+				sprintf(pkt, "HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE ");
+				tr->tr_ctl(tr->priv, MUX_TR_OP_SETIF, dif, sizeof(MuxIf_t));
+				tr->tr_sendto(tr->priv, inet_addr("5.5.5.5"), pkt, strlen(pkt));
+			}
+		}
+
+		// set interface
+		
+
+
+	}
+	// send handhsake packets to server
+
+	exit(0);
+
+	timer_add_ms("CLIHANDSHAKE_SERVICE", 1000, mux_clihandshake_service_1s, NULL );
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -62,8 +101,8 @@ int main(int argc, char *argv[])
 
 #define BRIDGE_ID_MAIN 1
 
-	signal(SIGSEGV, segv_handler); 
-	clog(ctx->info, CMARK, DBG_SYSTEM, "F:%s: HELLO WORLD", __FUNCTION__);
+//	signal(SIGSEGV, segv_handler); 
+	
 
 	mux_uuid();
 
@@ -99,14 +138,15 @@ int main(int argc, char *argv[])
 
 	}
 
-
-
 	clientdev = mux_ifmgr_add(ctx, "CLIENT_ETH3", MUX_IF_RING, "client0", MUX_IF_F_SLAVE | MUX_IF_F_CLIENT | MUX_IF_F_GWDISCOVERY);
 	if (!clientdev)
 	{
 		clog(info, CMARK, DBG_SYSTEM, "F:%s: clientdev create fail", __FUNCTION__);
 		exit(-1);
 	}
+
+
+	
 
 
 	//  Add bridge interface
@@ -141,8 +181,9 @@ int main(int argc, char *argv[])
 	// ARP service timer 1 sec.
 	timer_add_ms("ARP_SERVICE", 1000, mux_arpdb_service_1s, NULL);
 	timer_add_ms("GWDISCOVERY_SERVICE", 1000, mux_gwdiscovery_service_1s, NULL);
-	timer_add_ms("IPCONF_SERVICE", 1000, mux_ipconf_service_1s, NULL);
+	timer_add_ms("IPCONF_SERVICE", 100, mux_ipconf_service_1s, NULL);
 	timer_add_ms("IFDEBUG_SERVICE", 1000, mux_ifmgr_service_10s, NULL);
+	timer_add_ms("CLIHANDSHAKE_SERVICE", 1000, mux_clihandshake_service_1s, NULL );
 
 
 	while(1)

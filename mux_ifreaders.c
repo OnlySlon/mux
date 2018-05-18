@@ -98,10 +98,14 @@ void mux_ifread_ring(MUXCTX *ctx, MuxIf_t *rif)
 		{
 			if (hdr.extended_hdr.rx_direction)
 			{
-//				printf(">>>>>>>>>>>>>>>>>>>>%p", buffer);
+				rif->stats.rx_packets++;
+				rif->stats.rx_bytes += (u_int64_t) hdr.caplen;
 				mux_ether_input(ctx, rif, (char *) buffer, hdr.caplen);
 			} 
-		} 
+		}  else
+		{
+			rif->stats.rx_errors++;
+		}
 	}
 }
 
@@ -112,8 +116,14 @@ void mux_ifread_tap(MUXCTX *ctx, MuxIf_t *rif)
 	if (rif->type != MUX_IF_TAP) return;
 
 	int pkt_len = read(rif->id, buffer, 1500);
+
 	if (unlikely(pkt_len <= 0))
+	{
+		rif->stats.rx_errors++;
 		return;
+	}
+	rif->stats.rx_packets++;
+	rif->stats.rx_bytes += (u_int64_t) pkt_len;
 
 	mux_ether_input(ctx, rif, (char *) buffer, pkt_len);
 

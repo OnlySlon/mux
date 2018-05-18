@@ -34,7 +34,13 @@ void mux_ifwrite_tap(MUXCTX *ctx, MuxIf_t *wif, char *pkt, u_int32_t len)
 
 	int wres = write(wif->id, pkt, len);
 	if (wres <= 0)
+	{
 		clog(info, CERROR, DBG_TUNTAP, "F:%s: %s: Write packet error '%s'", __FUNCTION__, wif->name, strerror(errno));
+		wif->stats.tx_errors++;
+	}
+
+	wif->stats.tx_bytes += len;
+	wif->stats.tx_packets++;
 	return;
 }
 
@@ -47,8 +53,14 @@ void mux_ifwrite_ring(MUXCTX *ctx, MuxIf_t *wif, char *pkt, u_int32_t len)
 	hex_dump(pkt, len);
 
 	rc = pfring_send(wif->ring, (char *)pkt, len, 1);
-	//if (rc < 0)
-                                                
+	if (rc < 0)
+	{
+		wif->stats.tx_errors++;					
+	} else
+	{
+		wif->stats.tx_bytes += len;
+		wif->stats.tx_packets++;
+	}
 
 }
 

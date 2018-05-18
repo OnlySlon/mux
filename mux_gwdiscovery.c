@@ -20,29 +20,9 @@
 CLOG_INFO *info;
 
 
-enum MuxDiscoveryState {
-    MUX_GWDISCOVERY_PRETENDER = 0,
-    MUX_GWDISCOVERY_COMMITED,
-	MUX_GWDISCOVERY_RECHECK,
-};
 
-#define MUX_GWDISCOVERY_TTL            60          // 60 sec.
-#define MUX_GWDISCOVERY_TTL_RECHECK    10 
 
-typedef struct mux_gwdiscovery_info
-{
-	int                id;     // key in this case - 48to32 bit hash of gateway mac address
-	u_int32_t          state;
-	struct eth_addr    gw_hw;
-	struct eth_addr    cli_hw;
-	struct in_addr     cli_ip;
-	struct in_addr     gw_ip;  // We don't know gateway ip address on gwdiscovery mode
-	u_int32_t          ttl;
-	MuxIf_t          *iface;
-	UT_hash_handle     hh;
-} MuxDiscovery;
-
-MuxDiscovery *DiscoveryDB = NULL;
+MuxGwDiscovery *GwDiscoveryDB = NULL;
 
 
 /* 48 to 32 bit hash function */
@@ -55,8 +35,8 @@ u_int32_t mux_mac_hash(u_char *mac)
 /* gwdiscovery service for delete expired records */
 void mux_gwdiscovery_service_1s()
 {
-	MuxDiscovery *s;
-	for (s = DiscoveryDB; s != NULL; s = (struct MuxDiscovery *)(s->hh.next))
+	MuxGwDiscovery *s;
+	for (s = GwDiscoveryDB; s != NULL; s = (struct MuxGwDiscovery *)(s->hh.next))
 	{
 		if (s->ttl > 0)
 			s->ttl--;
@@ -73,12 +53,13 @@ void mux_gwdiscovery_service_1s()
 		{
 			clog(info, CMARK, DBG_SYSTEM, "F:%s: %s: Discovery record %p expired! GWHW: %02x:%02x:%02x:%02x:%02x:%02x", __FUNCTION__, s->iface->name, s,
 				 s->gw_hw.addr[0], s->gw_hw.addr[1], s->gw_hw.addr[2], s->gw_hw.addr[3], s->gw_hw.addr[4], s->gw_hw.addr[5]);
-			HASH_DEL(DiscoveryDB, s);
+			HASH_DEL(GwDiscoveryDB, s);
 			free(s);
 		}
 	}
 	timer_add_ms("GWDISCOVERY_SERVICE", 1000, mux_gwdiscovery_service_1s, NULL);
 }
+
 
 
 /* 
@@ -94,7 +75,7 @@ void mux_gwdiscovery_sniff(MuxIf_t  *iface, char *pkt, u_int32_t len)
 
 	struct eth_hdr    *eth = (struct eth_hdr *) pkt;
 	struct ip_hdr     *ip =  (struct ip_hdr *) (pkt + SIZEOF_ETH_HDR);
-	MuxDiscovery *s;
+	MuxGwDiscovery *s;
 
 	clog(info, CMARK, DBG_SYSTEM, "F:%s: %s: PKT IN", __FUNCTION__, iface->name);
 
@@ -104,12 +85,12 @@ void mux_gwdiscovery_sniff(MuxIf_t  *iface, char *pkt, u_int32_t len)
 		int hash = mux_mac_hash(&eth->dest.addr);
 		clog(info, CMARK, DBG_SYSTEM, "F:%s: %s: CLIENT LINK hash=0x%08X", __FUNCTION__, iface->name, (unsigned) hash);
 
-		HASH_FIND_INT(DiscoveryDB, &hash, s);
+		HASH_FIND_INT(GwDiscoveryDB, &hash, s);
 		if (s == NULL)
 		{
 			// Record not exist. Create new. 
-			s = (MuxDiscovery *) malloc(sizeof(MuxDiscovery));
-			memset(s, 0, sizeof(MuxDiscovery));
+			s = (MuxGwDiscovery *) malloc(sizeof(MuxGwDiscovery));
+			memset(s, 0, sizeof(MuxGwDiscovery));
 			s->cli_ip.s_addr = ip->src;
 			s->gw_ip.s_addr  = 0; // always caluse we cat get it from gwdiscovery
 			memcpy(&s->gw_hw.addr,  &eth->dest.addr,  ETH_HWADDR_LEN);
@@ -125,7 +106,7 @@ void mux_gwdiscovery_sniff(MuxIf_t  *iface, char *pkt, u_int32_t len)
 				 eth->src.addr[0], eth->src.addr[1], eth->src.addr[2],
 				 eth->src.addr[3], eth->src.addr[4], eth->src.addr[5],
 				inet_ntoa(s->cli_ip)); 
-			HASH_ADD_INT(DiscoveryDB, id, s);
+			HASH_ADD_INT(GwDiscoveryDB, id, s);
 			// Ok PRETENDER now in database;
 		} else
 		{
@@ -136,7 +117,7 @@ void mux_gwdiscovery_sniff(MuxIf_t  *iface, char *pkt, u_int32_t len)
 		clog(info, CMARK, DBG_SYSTEM, "F:%s: %s: SERVER LINK", __FUNCTION__, iface->name);
 		// Sniff on master link side
 		int hash = mux_mac_hash(&eth->src.addr);
-		HASH_FIND_INT(DiscoveryDB, &hash, s);
+		HASH_FIND_INT(GwDiscoveryDB, &hash, s);
 		if (s)
 		{
 			// We got a PRETENDER??? >>>>>>>>>> GW_PARAMS: SRC
@@ -151,8 +132,9 @@ void mux_gwdiscovery_sniff(MuxIf_t  *iface, char *pkt, u_int32_t len)
 					memcmp(&s->gw_hw.addr,  &eth->src.addr,  ETH_HWADDR_LEN) == 0)
 				{
 					clog(info, CMARK, DBG_SYSTEM, "F:%s: %s: GW_MASTER <<-- MUXBOX Macthed!! GW switch to MUX_GWDISCOVERY_COMMITED", __FUNCTION__, iface->name);
-					s->state = MUX_GWDISCOVERY_COMMITED;
-					s->ttl   = MUX_GWDISCOVERY_TTL;
+					s->state    = MUX_GWDISCOVERY_COMMITED;
+					s->ttl      = MUX_GWDISCOVERY_TTL;
+					s->iface_gw = iface;
 				} else
 				{
 					clog(info, CMARK, DBG_SYSTEM, "F:%s: %s: GW_MASTER <<-- MUXBOX  NOT MATCHED!!!! %08X %08X", __FUNCTION__, iface->name, s->cli_ip.s_addr, ip->dst);
@@ -163,3 +145,14 @@ void mux_gwdiscovery_sniff(MuxIf_t  *iface, char *pkt, u_int32_t len)
 		
 }
 
+
+
+/* Find first valid record with same interface */
+MuxGwDiscovery *mux_gwdiscovery_get(MuxIf_t  *iface)
+{
+	MuxGwDiscovery *s;
+	for (s = GwDiscoveryDB; s != NULL; s = (MuxGwDiscovery *)(s->hh.next))
+		if (s->iface_gw == iface && s->state > MUX_GWDISCOVERY_PRETENDER)
+			return s;
+	return (MuxGwDiscovery *) NULL;
+}

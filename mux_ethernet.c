@@ -50,6 +50,26 @@ int ethernet_output_ip(MuxIf_t *netif,
 
 	// Fill eth header
 	eth->type = htons(ETHTYPE_IP);
+
+	if (netif->flags & MUX_IF_F_GWDISCOVERY)
+	{
+		// Use different mechanism for send packet
+		MuxGwDiscovery *gwd = mux_gwdiscovery_get(netif);
+		if (!gwd)
+		{
+			clog(info, CWARN, DBG_SYSTEM, "F:%s: %s: GWDiscovery for interface '%s' not ready. Drop this packet", __FUNCTION__, netif->name);
+			return 0;
+		}
+		clog(info, CWARN, DBG_SYSTEM, "F:%s: Use GWDiscovery mechanism for send packet from if: %s", __FUNCTION__, netif->name);
+		// GWDiscovery mechanism is ready
+		memcpy(&eth->src.addr,  &gwd->cli_hw.addr, ETH_HWADDR_LEN);
+		memcpy(&eth->dest.addr, &gwd->gw_hw.addr,  ETH_HWADDR_LEN);
+
+		netif->tx_callback(NULL, netif, eth, (len +  IP_HLEN + SIZEOF_ETH_HDR));
+		return 0;
+	}
+
+
 	memcpy(&eth->src.addr, &netif->hwaddr, ETH_HWADDR_LEN);
 
 
@@ -58,6 +78,7 @@ int ethernet_output_ip(MuxIf_t *netif,
 	MuxIPCfg *ipcfg = mux_ipconf_match4(netif->ip, htonl(ip->dst));
 
 	int local = 0;
+	
 	if (ipcfg)
 	{ 
 		// Address is local - > need resolve dst address

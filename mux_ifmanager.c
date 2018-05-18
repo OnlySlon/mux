@@ -101,24 +101,68 @@ void mux_ifmgr_service_10s()
 {
 	MuxIf_t *s = NULL;
 	char brid[10];
-	clog(info, CMARK, DBG_TUNTAP, "--------------------------------------------------------'", __FUNCTION__);
+	clog(info, CMARK, DBG_TUNTAP, "----Interfaces info-----------------------------------------------", __FUNCTION__);
 	for (s = ifdb; s != NULL; s = (struct MuxIf_t *)(s->hh.next))
 	{
 
 		snprintf(brid, 9, "Br%d", s->br_id);
-		clog(info, CERROR, DBG_TUNTAP, "%-12s  Type: %-15s  Bridge: %s", 
+		clog(info, CERROR, DBG_TUNTAP, "%-12s Type: %-15s  Bridge: %s", 
 			 s->name, 
 			 mux_ifmgr_tpe(s->type),
-			 s->br_id ? brid : "-Disabled-"); 
+			 s->br_id ? brid : "-No-"); 
 
-		clog(info, CERROR, DBG_TUNTAP, "%-12s  Flags: %s", 
+		clog(info, CERROR, DBG_TUNTAP, "%-12s Flags: %s", 
 				"", mux_ifmgr_flags2string(s->flags));
+		// Fix this shit!!!!!!!!
+		char rx_human[32];
+		char tx_human[32];
+		human_size(rx_human, 31, s->stats.rx_bytes);
+		human_size(tx_human, 31, s->stats.tx_bytes);
 
-		clog(info, CERROR, DBG_TUNTAP, "      ");
+		clog(info, CERROR, DBG_TUNTAP, "%-12s RX packets:%llu errors:%llu dropped:0 overruns:0 frame:0", "", s->stats.rx_packets, s->stats.rx_errors);
+		clog(info, CERROR, DBG_TUNTAP, "%-12s TX packets:%llu errors:%llu dropped:0 overruns:0 carrier:0", "", s->stats.tx_packets, s->stats.tx_errors);
+		clog(info, CERROR, DBG_TUNTAP, "%-12s RX bytes:%llu (%s)  TX bytes:%llu (%s)", "", s->stats.rx_bytes, rx_human, s->stats.tx_bytes, tx_human );
+		int gwd = 0;
+		// GWDiscovert infro
+		if (s->flags & MUX_IF_F_GWDISCOVERY && s->flags & MUX_IF_F_MASTER)
+		{
+			MuxGwDiscovery *d = mux_gwdiscovery_get(s);
+			if (d)
+			{ 
+				gwd = 1;
+				clog(info, CERROR, DBG_TUNTAP, "%-12s GwDiscovery: GWHW: %02x:%02x:%02x:%02x:%02x:%02x CliIP: '%s'", "", 
+					 d->gw_hw.addr[0], d->gw_hw.addr[1], d->gw_hw.addr[2], d->gw_hw.addr[3], d->gw_hw.addr[4], d->gw_hw.addr[5], inet_ntoa(d->cli_ip));
+			} else
+			{
+				clog(info, CERROR, DBG_TUNTAP, "%-12s GwDiscovery: Unknown", "");
+			}
+		}
+
+
+		// IP confifuraion
+		if (s->ip)
+		{
+			char str[32];
+			struct in_addr ip;
+			struct in_addr gw;
+			ip.s_addr = s->ip->ipaddr;
+			gw.s_addr = s->ip->gateway;
+			sprintf(str, "%s", inet_ntoa(ip));
+			ip.s_addr = s->ip->gateway;
+			clog(info, CERROR, DBG_TUNTAP, "%-12s IPConf: IP: %s/%u  GwIP: %s", "", str, s->ip->mask, inet_ntoa(gw));
+		} else
+			if (gwd)
+				clog(info, CERROR, DBG_TUNTAP, "%-12s IPConf: Via GwDiscovery", "");
+			else
+				clog(info, CERROR, DBG_TUNTAP, "%-12s IPConf: ---none---", "");
+
+
+
+		clog(info, CERROR, DBG_TUNTAP, "      "); 
 
 
 	}
-	clog(info, CMARK, DBG_TUNTAP, "--------------------------------------------------------'", __FUNCTION__);
+	clog(info, CMARK, DBG_TUNTAP, "------------------------------------------------------------------", __FUNCTION__);
 
 	timer_add_ms("IFDEBUG_SERVICE", 5000, mux_ifmgr_service_10s, NULL);
 }
@@ -172,10 +216,12 @@ MuxIf_t *mux_ifmgr_add(MUXCTX *ctx, char *ifname, u_int32_t tpe, void *params, u
 	static if_idx = 0;
 	MuxIf_t *muxif = (MuxIf_t *) malloc(sizeof(MuxIf_t));
 	memset(muxif, 0, sizeof(sizeof(MuxIf_t)));
+	memset(&muxif->stats, 0, sizeof(MuxIfStats));
 	strncpy(muxif->name, ifname, MUX_IF_NAME_LEN-1);
 	muxif->type = tpe;
 	muxif->tx_callback = NULL;
 	muxif->ip          = NULL;
+	
 	switch (muxif->type)
 	{
 		case MUX_IF_RING:

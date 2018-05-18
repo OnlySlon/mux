@@ -4,6 +4,8 @@
 #include "pfring.h"
 #include "timers.h"
 #include "net_structs.h"
+#include "mux_proto.h"
+
 
 enum MuxTransportT {
     MUX_TR_RAW = 0,
@@ -94,9 +96,13 @@ typedef struct MUX_IF_STATS
 {
 	u_int64_t    tx_bytes;
 	u_int64_t    tx_packets;
+	u_int64_t    tx_errors;
 	u_int64_t    tx_rate;
+	
+
 	u_int64_t    rx_bytes;
 	u_int64_t    rx_packets;
+	u_int64_t    rx_errors;
 	u_int64_t    rx_rate;
 } MuxIfStats;
 
@@ -116,6 +122,7 @@ typedef struct MUX_IFS_S
 	u_int32_t          flags;
 	struct eth_addr    hwaddr;
 	MuxIPCfg          *ip;
+	MuxIfStats         stats;
 	UT_hash_handle     hh;												// UThash service handler
 } MuxIf_t;
 
@@ -158,12 +165,15 @@ typedef struct MUX_IFCONF_PLUGIN_S
 /* transport plugin */
 
 
+#define MUX_TR_OP_SETIF  0x00
+#define MUX_TR_OP_HZ     0x01
 typedef struct MUX_TR_PLUGIN
 {
 	u_int32_t   type;
 	char       *name;
-	int         (*tr_init)();
+	int         (*tr_init)(MuxIf_t *tif);
 	int         (*tr_send)(void *priv, char *pkt, int len);
+	int         (*tr_sendto)(void *priv, u_int32_t ipaddr,  char *pkt, int len);
 	int         (*tr_recv)(void *priv, char *pkt);
 	int         (*tr_ctl)(void *priv, u_int32_t op, void *op_val, int oplen);
 	int         (*tr_destroy)(void *priv);
@@ -203,3 +213,72 @@ typedef struct arp_record
  eth0 ---- eth1
  
 */
+
+/* >>>>>>>>>>>>>>>>>> GATEWAY DISCOVERY  <<<<<<<<<<<<<<<<<<<<<<<<< */
+
+enum MuxDiscoveryState {
+    MUX_GWDISCOVERY_PRETENDER = 0,
+    MUX_GWDISCOVERY_COMMITED,
+	MUX_GWDISCOVERY_RECHECK,
+};
+
+#define MUX_GWDISCOVERY_TTL            60          // 60 sec.
+#define MUX_GWDISCOVERY_TTL_RECHECK    10 
+
+typedef struct mux_gwdiscovery_info
+{
+	int                id;     // key in this case - 48to32 bit hash of gateway mac address
+	u_int32_t          state;
+	struct eth_addr    gw_hw;
+	struct eth_addr    cli_hw;
+	struct in_addr     cli_ip;
+	struct in_addr     gw_ip;  // We don't know gateway ip address on gwdiscovery mode
+	u_int32_t          ttl;
+	MuxIf_t          *iface;
+	MuxIf_t          *iface_gw;
+	UT_hash_handle     hh;
+} MuxGwDiscovery;
+
+
+/* ------------------------ MUX tuns structures -------------------------------  */
+
+#define MUX_GUID_SIZE   40
+
+#define MUX_INSTANCE_STAGE_SRV_GOTSSHAKE  0x01
+#define MUX_INSTANCE_STAGE_SRV_GOTTUNS    0x02
+
+
+typedef struct mux_devinstance
+{
+	int                id;
+	char               GUID[MUX_GUID_SIZE];
+	u_int32_t          stage;
+	u_int32_t          group_id;
+	UT_hash_handle     hh; 
+} MuxDevInstance;
+
+
+
+// Multi-Tun side of tunnel
+typedef struct mux_muxtun
+{
+	int                id;
+	u_int16_t          id_global;
+	u_int32_t          ip_remote;
+	u_int32_t          ip_local;
+	u_int32_t          group;
+	u_int32_t          state;
+	MuxTransport      *transport;
+	u_int32_t          seq;
+	MuxDevInstance    *device;
+	UT_hash_handle     hh; 
+} MuxMuxTun;
+
+
+
+enum MuxMuxStates
+{
+	MUX_MUXSTATE_DOWN = 0,
+	MUX_MUXSTATE_UP,
+};
+

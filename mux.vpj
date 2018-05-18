@@ -198,6 +198,7 @@
 			Name="Header Files"
 			Filters="*.h;*.H;*.hh;*.hpp;*.hxx;*.inc;*.sh;*.cpy;*.if">
 			<F N="inc/mux.h"/>
+			<F N="inc/mux_proto.h"/>
 			<F N="inc/timers.h"/>
 		</Folder>
 		<Folder
@@ -228,6 +229,7 @@
 			<F N="mux_main.c"/>
 			<F N="mux_muxtun.c"/>
 			<F N="mux_poller.c"/>
+			<F N="mux_proto.c"/>
 			<F N="mux_server.c"/>
 			<F N="mux_tr_raw.c"/>
 			<F N="mux_tr_udp.c"/>

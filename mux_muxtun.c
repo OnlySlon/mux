@@ -17,42 +17,7 @@
 
 #include "mux.h"
 
-CLOG_INFO *info;
-
-
-
-typedef struct Mux_Proto
-{
-	u_int16_t          magic;		   // MuxIP proto magic								   //
-	u_int16_t          tun_id;		   // Mux  global TunID
-	u_int16_t          seq_gl;		   // global tun seq
-	u_int16_t          seq_tun;		   // local tun seq
-	u_int8_t           flags;
-} MuxProtoTun;
-
-
-
-
-// Multi-Tun side of tunnel
-typedef struct mux_muxtun
-{
-	int                id;
-	u_int16_t          id_global;
-	u_int32_t          ip_remote;
-	u_int32_t          ip_local;
-	u_int32_t          group;
-	u_int32_t          state;
-	MuxTransport      *transport;
-	UT_hash_handle     hh;    
-} MuxMuxTun;
-
-
-
-enum MuxMuxStates
-{
-	MUX_MUXSTATE_DOWN = 0,
-	MUX_MUXSTATE_UP,
-};
+extern CLOG_INFO *info;
 
 MuxTransport MuxTransportRAW;
 
@@ -116,42 +81,30 @@ MuxMuxTun *mux_muxtun_new(MuxTransport *tr_type)
 }
 
 
-void mux_muxtun_match(MuxMuxTun *muxdb, char *pkt)
+MuxMuxTun * mux_muxtun_match(u_int32_t tunid)
 {
 	MuxMuxTun *s;
-	struct in_addr ipaddr;
-	struct ip_hdr *iphdr  =  (struct ip_hdr *) (pkt + SIZEOF_ETH_HDR);
-	u_int32_t tr_offset   = 0;
-
-	if (iphdr->_proto == IPPROTO_UDP)
-	{
-		tr_offset = SIZEOF_ETH_HDR + SIZEOF_IP_HDR + SIZEOF_UDP_HDR;
-	} else
-	{
-		tr_offset = SIZEOF_ETH_HDR + SIZEOF_IP_HDR;
-	}
-
-	MuxProtoTun *hdr = (MuxProtoTun *) (pkt + tr_offset);
-
-
-	int hash =  (int) ntohs(hdr->tun_id);
+	int hash = (int) tunid;
 
 	HASH_FIND_INT(MuxTunDB, &hash, s); 
 	if (s) 
 	{
 		// Tun with this ID exist
 		// handle tun data
+		return s;
 
 	} else
 	{
-		clog(info, CMARK, DBG_SYSTEM, "F:%s: Can't find MuxTun with id: 0x%04X", __FUNCTION__, ntohs(hdr->tun_id));
+		clog(info, CMARK, DBG_SYSTEM, "F:%s: Can't find MuxTun with id: 0x%04X", __FUNCTION__, tunid);
+		return (MuxMuxTun *) NULL;
 
 	}
-
+/*
 	for (s = muxdb; s != NULL; s = (MuxMuxTun *)(s->hh.next))
 	{
 
-	}
+    }
+*/
 }
 
 

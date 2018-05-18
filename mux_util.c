@@ -494,18 +494,22 @@ char *mux_uuid()
 
 
 /* Transport util */
-
 MuxTransport *mux_transport_init(MuxTransport *tr_type)
 {
 	MuxTransport *tr = (MuxTransport *) malloc(sizeof(MuxTransport));
 	memset(tr, 0, sizeof(MuxTransport));
-	memcpy(tr, tr_type, sizeof(MuxTransport));
+	memcpy(tr, tr_type, sizeof(MuxTransport));	
 	tr->priv = 0;
-	if (tr->tr_init() == 0)
-		return tr;
+	tr->priv = tr->tr_init(tr);
 
-	free(tr);
-	return (MuxTransport *) NULL;
+	if (tr->priv == NULL)
+	{
+		clog(info, CMARK, DBG_SYSTEM, "F:%s: Transport '%s' init >>FAILED<<", __FUNCTION__, tr_type->name);
+		free(tr);
+		return (MuxTransport *) NULL;
+	}
+	clog(info, CMARK, DBG_SYSTEM, "F:%s: Transport '%s' init done", __FUNCTION__, tr_type->name);
+	return tr;
 
 }
 
