@@ -25,6 +25,9 @@ void mux_ipconf_service_1s();
 void mux_ifmgr_service_10s();
 void segv_handler(int sig);
 
+
+u_int32_t mode = MUX_CLIENT;
+char *UUID = NULL;
 /* 
     main client  test
     - 3 interface
@@ -72,9 +75,11 @@ void mux_clihandshake_service_1s(void *ptr)
 			{
 				char *tmp = malloc(0xFFF);
 				char *pkt = tmp + SIZEOF_ETH_HDR + SIZEOF_IP_HDR;
-				sprintf(pkt, "HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE HELLO HANDSHAKE ");
+
+				u_int32_t len = mux_proto_ashmhdr(pkt, MUX_PROTO_TPE_HANDSHAKE, MUX_PROTO_F_NOFLAGS, NULL, NULL);
+
 				tr->tr_ctl(tr->priv, MUX_TR_OP_SETIF, dif, sizeof(MuxIf_t));
-				tr->tr_sendto(tr->priv, inet_addr("5.5.5.5"), pkt, strlen(pkt));
+				tr->tr_sendto(tr->priv, inet_addr("5.5.5.5"), pkt, len);
 			}
 		}
 
@@ -104,7 +109,7 @@ int main(int argc, char *argv[])
 //	signal(SIGSEGV, segv_handler); 
 	
 
-	mux_uuid();
+	UUID = mux_uuid();
 
 	mux_ifread_init();
 	timers_init();

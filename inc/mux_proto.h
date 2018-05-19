@@ -12,6 +12,7 @@
 #define MUX_PROTO_TPE_ALIVE         0x07       // Keep-alive packet
 #define MUX_PROTO_TPE_DICTCFG       0x08       // dictionary config 
 
+#define MUX_PROTO_F_NOFLAGS         0
 #define MUX_PROTO_F_COMPRESSED      (1 << 0)   // payload is compressed
 #define MUX_PROTO_F_HAVECRC         (1 << 1)   // payload have crc
 #define MUX_PROTO_F_HAVESEQINFO     (1 << 2)   // payload have SeqInfo
@@ -49,7 +50,7 @@ typedef struct MuxProto_SeqInfo
 typedef struct MuxProto_handshake
 {
 	u_int8_t    stage;
-	char        GUID[40];
+	char        UUID[MUX_UUID_LEN];
 	u_int16_t   payload_size;
 	u_int16_t   tunid;
 } MuxProtoHandshakeT;

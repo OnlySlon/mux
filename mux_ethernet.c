@@ -65,6 +65,8 @@ int ethernet_output_ip(MuxIf_t *netif,
 		memcpy(&eth->src.addr,  &gwd->cli_hw.addr, ETH_HWADDR_LEN);
 		memcpy(&eth->dest.addr, &gwd->gw_hw.addr,  ETH_HWADDR_LEN);
 
+		ip->_chksum = in_cksum((char *) ip, IP_HLEN);
+
 		netif->tx_callback(NULL, netif, eth, (len +  IP_HLEN + SIZEOF_ETH_HDR));
 		return 0;
 	}
@@ -101,6 +103,9 @@ int ethernet_output_ip(MuxIf_t *netif,
 									  netif,
 									  (char *) eth, 
 									  (len +  IP_HLEN + SIZEOF_ETH_HDR));
+
+
+	ip->_chksum = in_cksum((char *) ip, IP_HLEN);
 
 	if (ar)
 	{

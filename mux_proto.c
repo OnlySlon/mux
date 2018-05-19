@@ -18,23 +18,24 @@
 #include "mux.h"
 
 extern CLOG_INFO *info;
-
-
+char *UUID;
 
 
 u_int32_t mode;
 
 
 
-u_int32_t mux_proto_ashmhdr(u_int32_t type,
+u_int32_t mux_proto_ashmhdr(char *space,
+	                        u_int32_t type,
 							u_int32_t flags,
 							MuxMuxTun *tun,
 							MuxDevInstance *dev)
 {
 	u_int32_t         offset = sizeof(MuxProtoHdr);
 	MuxProtoHdr      *hdr;
+	MuxProtoCrc      *crc;
 	MuxProtoSeqInfo  *seqinfo;
-	hdr = (MuxProtoHdr *) malloc(1600);
+	hdr = (MuxProtoHdr *) space;
 
 
 	hdr->flags = flags;
@@ -42,7 +43,7 @@ u_int32_t mux_proto_ashmhdr(u_int32_t type,
 
 	if (flags & MUX_PROTO_F_HAVECRC)
 	{
-		MuxProtoCrc *crc  = (MuxProtoCrc *) (((char *)  hdr) + offset);
+		crc  = (MuxProtoCrc *) (((char *)  hdr) + offset);
 		crc->crc  = 0;
 		offset   += sizeof(MuxProtoCrc);
 	}
@@ -67,22 +68,32 @@ u_int32_t mux_proto_ashmhdr(u_int32_t type,
 		case MUX_PROTO_TPE_HANDSHAKE:
 			{
 				MuxProtoHandshakeT *hshake =  (MuxProtoHandshakeT *) (((char *)  hdr) + offset);
-				if (dev)
+				if (mode == MUX_CLIENT)
 				{
-					memcpy(hshake->GUID, dev->GUID, MUX_GUID_SIZE);
-					hshake->payload_size = 0;
-					hshake->stage        = 0;
-					hshake->tunid        = 0;
+					memcpy(hshake->UUID, UUID, MUX_UUID_LEN);
+					hshake->stage = MUX_PROTO_SSHAKE_REQUEST;
+					hshake->tunid = 0;
 				} else
 				{
-					memset(hshake->GUID, 0, MUX_GUID_SIZE);
+					
+					if (dev)
+					{
+						memcpy(hshake->UUID, dev->UUID, MUX_UUID_LEN);
+						hshake->payload_size = 0;
+						hshake->stage        = 0;
+						hshake->tunid        = 0;
+					} else
+					{
+						memset(hshake->UUID, 0, MUX_UUID_LEN);
+					}					
 				}
+				offset += sizeof(MuxProtoHandshakeT);
 			}
 			break;
 
 	}
 
-
+	return offset;
 
 }
 

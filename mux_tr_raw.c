@@ -76,7 +76,7 @@ int mux_tr_raw_sendto(void *priv, u_int32_t dstip,  char *pkt, int len)
 
 //	clog(info, CMARK, DBG_SYSTEM, "F:%s: %s: TESTPACKET %s --> %s", __FUNCTION__, txif->name, src_str, dst_str);
 
-	mux_ip_output_if(p->tif, src.s_addr, dst.s_addr, 1, pkt,  len);
+	mux_ip_output_if(p->tif, src.s_addr, dst.s_addr, MUX_PROTONUM, pkt,  len);
 
 
 }

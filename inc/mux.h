@@ -4,8 +4,14 @@
 #include "pfring.h"
 #include "timers.h"
 #include "net_structs.h"
-#include "mux_proto.h"
 
+
+#define MUX_UUID_FILE "/etc/mux_uuid"
+#define MUX_UUID_LEN  36
+
+#define  MUX_PROTONUM 5
+
+#include "mux_proto.h"
 
 enum MuxTransportT {
     MUX_TR_RAW = 0,
@@ -242,7 +248,7 @@ typedef struct mux_gwdiscovery_info
 
 /* ------------------------ MUX tuns structures -------------------------------  */
 
-#define MUX_GUID_SIZE   40
+//#define MUX_UI_SIZE   40
 
 #define MUX_INSTANCE_STAGE_SRV_GOTSSHAKE  0x01
 #define MUX_INSTANCE_STAGE_SRV_GOTTUNS    0x02
@@ -251,7 +257,7 @@ typedef struct mux_gwdiscovery_info
 typedef struct mux_devinstance
 {
 	int                id;
-	char               GUID[MUX_GUID_SIZE];
+	char               UUID[MUX_UUID_LEN];
 	u_int32_t          stage;
 	u_int32_t          group_id;
 	UT_hash_handle     hh; 

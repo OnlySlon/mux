@@ -451,8 +451,7 @@ char *uuid_gen()
 
 
 /* UUID handler */
-#define MUX_UUID_FILE "/etc/mix_uuid"
-#define MUX_UUID_LEN  36
+
 char *mux_uuid()
 {
 	// First try to read uuid file

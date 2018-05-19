@@ -56,7 +56,7 @@ int mux_ip_output_if(MuxIf_t     *txif,
 	ip->_offset  = 0;
 	ip->dst      = htonl(dst);
 	ip->src      = htonl(src);
-	ip->_chksum  = in_cksum((char *) ip, IP_HLEN);
+	ip->_chksum  = 0;// in_cksum((char *) ip, IP_HLEN);
 
 	// automatic set source address 
 	if(src == 0)
@@ -65,7 +65,7 @@ int mux_ip_output_if(MuxIf_t     *txif,
 		{
 			MuxGwDiscovery *gwd = mux_gwdiscovery_get(txif);
 			if (gwd)
-				ip->src = htonl(gwd->cli_ip.s_addr);
+				ip->src = gwd->cli_ip.s_addr;
 		} else
 		{
 			if (txif->ip)
