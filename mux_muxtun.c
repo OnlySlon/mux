@@ -43,33 +43,62 @@ typedef struct MUX_IFCONF_PLUGIN_S
 
 
 
-MuxMuxTun *mux_muxtun_new(MuxTransport *tr_type)
+MuxMuxTun *mux_muxtun_new(MuxTransport        *tr_type,
+						  MuxProtoHandshakeT  *hshake, 
+						  MuxDevInstance      *device)
 {
 	static u_int16_t tunid = 0;
 	MuxMuxTun *s = NULL;
 	int key;
 	
-	// first generate  unique tunid
-	do
+
+	// if got hshake args - check for same ifname
+	if (hshake && device)
 	{
-		tunid = (u_int16_t) (rand32() & 0xFFFF);
-		key = (int) tunid;
-		HASH_FIND_INT(MuxTunDB, &key, s);
-	} while(s != NULL);
+		for (s=MuxTunDB; s != NULL; s = (MuxMuxTun *)(s->hh.next))
+		{
+			if (s->device == device && 
+				strncmp(hshake->ifname, s->ifname_remote, MUX_IFNAME_MAXLEN - 1) == 0 && 
+				strncmp(hshake->UUID, s->device->UUID, MUX_UUID_LEN) == 0 )
+			{
+				clog(info, CMARK, DBG_SYSTEM, "F:%s: MuxTun with same UUID and devname already exist", __FUNCTION__);
+				// This record already exist. 
+				return s;
+			}
+			
+		}
+	}
+
+	if (hshake->stage == MUX_PROTO_SSHAKE_REQUEST)
+	{
+		// first generate  unique tunid >>>>>>>>>> SERVER SIDE
+		do
+		{
+			tunid = (u_int16_t) (rand32() & 0xFFFF);
+			key = (int) tunid;
+			HASH_FIND_INT(MuxTunDB, &key, s);
+		} while(s != NULL);
+	} else
+	{
+		// Client side -> accept tun id from server
+		tunid = ntohs(hshake->tunid);
+	}
+
 
 	// get random tunid on start
 
 	s = (MuxMuxTun *) malloc(sizeof(MuxMuxTun));
 
-	s->transport = mux_transport_init(tr_type);
+	s->tr = mux_transport_init(tr_type);
 	if (s == NULL)
 		goto rollback;
 
 	s->id          = (int) tunid;
 	s->id_global   = tunid;
 
-
+	clog(info, CMARK, DBG_SYSTEM, "F:%s: New MuxTun (%p) generated (TunID=%u)", __FUNCTION__, s, (unsigned) tunid);
 	
+	HASH_ADD_INT(MuxTunDB, id, s);
 	return s;
 
 	rollback:

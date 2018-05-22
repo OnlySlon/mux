@@ -28,6 +28,7 @@
 u_char *_buffer;
 u_char *buffer;
 
+u_int32_t mode;
 
 void mux_ifread_init()
 {
@@ -46,7 +47,7 @@ void mux_ether_input(MUXCTX *ctx, MuxIf_t *rif, char *pkt, u_int32_t len)
 
 	// Should we stop handle packet after some situations ???? FIX-ME
 	if (ntohs(ehdr->type) == ETHTYPE_ARP)
-		etharp_input(rif, pkt, len);
+		etharp_input(rif, pkt, len);   // Fix me need drop arpo packets then ARP is UNICAST FIX-ME!
 
 	if (rif->is_bridge)
 	{
@@ -54,6 +55,13 @@ void mux_ether_input(MUXCTX *ctx, MuxIf_t *rif, char *pkt, u_int32_t len)
 		struct fdb_record *fr;
 
 		mux_gwdiscovery_sniff(rif, pkt, len);
+
+
+//		if (mode == MUX_SERVER)
+		{
+			if (mux_proto_handler(rif, pkt, len) ==  MUX_PACKET_DROP)  
+				return;
+		}
 
 
 		// store source address

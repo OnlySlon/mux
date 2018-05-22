@@ -32,7 +32,8 @@ int mux_ip_output_if(MuxIf_t     *txif,
 					 u_int32_t    dst,
 					 u_int8_t     proto,
 					 char        *payload,
-					 u_int32_t    len)
+					 u_int32_t    len,
+					 u_int32_t    flags)
 {
 	struct ip_hdr *ip =  (struct ip_hdr *) (payload -  IP_HLEN);
 	u_int16_t optlen = 0;
@@ -56,7 +57,7 @@ int mux_ip_output_if(MuxIf_t     *txif,
 	ip->_offset  = 0;
 	ip->dst      = htonl(dst);
 	ip->src      = htonl(src);
-	ip->_chksum  = 0;// in_cksum((char *) ip, IP_HLEN);
+	ip->_chksum  = 0;
 
 	// automatic set source address 
 	if(src == 0)
@@ -71,17 +72,15 @@ int mux_ip_output_if(MuxIf_t     *txif,
 			if (txif->ip)
 				ip->src = htonl(txif->ip->ipaddr);
 		}
-	}
+	} 
 
-	/*
-		IP hdr is cooked. Now we should resolve destination HW addr
-	*/
+	// IP hdr is cooked. Now we should resolve destination HW addr
 
-	ethernet_output_ip(txif, payload, len, proto);
+	ethernet_output_ip(txif, payload, len, flags); 
 }
 
 
-
+/*
 void test_ip_send(MuxIf_t *txif)
 {
 	char *pkt = malloc(0xFFF);
@@ -93,7 +92,7 @@ void test_ip_send(MuxIf_t *txif)
 	char dst_str[512];
 
 	sprintf(src_str, "0.0.0.0");
-	sprintf(dst_str, "10.10.10.30");
+	sprintf(dst_str, "10.10.10.30"); 
 	sprintf(dst_str, "10.10.10.11");
 	struct in_addr src;
 	struct in_addr dst;
@@ -106,3 +105,4 @@ void test_ip_send(MuxIf_t *txif)
 
 	mux_ip_output_if(txif,src.s_addr ,dst.s_addr, IPPROTO_UDP, payload, strlen(payload));
 }
+*/

@@ -24,10 +24,13 @@ extern CLOG_INFO *info;
 
 typedef struct MUX_RawPrivate
 {
-	u_int32_t      hz;
-	MuxIf_t       *tif;
-	MuxTransport  *self_ptr;
-
+	u_int32_t        hz;
+	MuxIf_t         *tif;
+	MuxTransport    *self_ptr;
+	int              gwhw_isset;
+	struct eth_addr  gwhw;
+	int              remote_isset;
+	u_int32_t        remote;
 } RawPrivate;
 
 
@@ -37,8 +40,10 @@ int mux_tr_raw_init(void *self_ptr)
 	RawPrivate *p = malloc(sizeof(RawPrivate));
 	clog(info, CMARK, DBG_SYSTEM, "F:%s:  >> INIT RAW TRANSPORT << (%p)", __FUNCTION__, p); 
 	memset(p, 0, sizeof(RawPrivate));
-	p->self_ptr = self_ptr;
-	p->hz = 0;
+	p->self_ptr     = self_ptr;
+	p->gwhw_isset   = 0;
+	p->remote_isset = 0;
+	p->hz           = 0;
 	return p;
 }
 
@@ -51,7 +56,18 @@ int mux_tr_raw_destroy(void *priv)
 
 int mux_tr_raw_send(void *priv, char *pkt, int len)
 {
-	return 0;
+	RawPrivate *p = (RawPrivate *) priv;
+	if (p->gwhw_isset && p->remote_isset)
+	{
+		printf("DIRTY HACK!!!!!\n\n\n\n");
+		struct eth_hdr *eth = (struct eth_hdr *) (pkt - IP_HLEN - SIZEOF_ETH_HDR);
+		u_int32_t src = 0x05050505;
+		u_int32_t dst = p->remote;
+		memcpy(&eth->dest.addr, &p->gwhw.addr, ETH_HWADDR_LEN);
+		mux_ip_output_if(p->tif, src,  dst, MUX_PROTONUM, pkt,  len, MUX_TR_F_DSTHW_EXTST);  
+		return 0;
+	}
+	return -1;
 }
 
 int mux_tr_raw_sendto(void *priv, u_int32_t dstip,  char *pkt, int len)
@@ -76,7 +92,7 @@ int mux_tr_raw_sendto(void *priv, u_int32_t dstip,  char *pkt, int len)
 
 //	clog(info, CMARK, DBG_SYSTEM, "F:%s: %s: TESTPACKET %s --> %s", __FUNCTION__, txif->name, src_str, dst_str);
 
-	mux_ip_output_if(p->tif, src.s_addr, dst.s_addr, MUX_PROTONUM, pkt,  len);
+	mux_ip_output_if(p->tif, src.s_addr, dst.s_addr, MUX_PROTONUM, pkt,  len, 0);  
 
 
 }
@@ -86,7 +102,7 @@ int mux_tr_raw_recv(void *priv, char *pkt)
 	return 0;
 }
 
-int mux_tr_raw_ctrl(void *priv, u_int32_t op, void *op_val, int oplen)
+int mux_tr_raw_ctrl(void *priv, u_int32_t op, char *op_val, int oplen)
 {
 	RawPrivate *rp = (RawPrivate *) priv;
 	switch(op)
@@ -99,9 +115,37 @@ int mux_tr_raw_ctrl(void *priv, u_int32_t op, void *op_val, int oplen)
 				return 0;
 			}
 			break;
+		case MUX_TR_OP_SETGWHW:
+			{
+				if (oplen == ETH_HWADDR_LEN && op_val)
+				{
+					memcpy(&rp->gwhw.addr, op_val, ETH_HWADDR_LEN);
+					clog(info, CMARK, DBG_SYSTEM, "F:%s: TR:%p OP: MUX_TR_OP_SETGWHW.  GwHW: %02x:%02x:%02x:%02x:%02x:%02x", __FUNCTION__, rp, 
+						  rp->gwhw.addr[0], rp->gwhw.addr[1], rp->gwhw.addr[2], rp->gwhw.addr[3], rp->gwhw.addr[4], rp->gwhw.addr[5]); 
+					rp->gwhw_isset = 1;
+					
+				}
+				return 0;
+			}
+			break;
+		case MUX_TR_OP_SETREMOTE: 
+			{
+				if (oplen == 4 && op_val)
+				{
+					rp->remote_isset = 1;
+					memcpy(&rp->remote, op_val, 4);
+					struct in_addr addr;
+					addr.s_addr = rp->remote;
+					clog(info, CMARK, DBG_SYSTEM, "F:%s: TR:%p OP: MUX_TR_OP_SETREMOTE. IP: %s ", __FUNCTION__, rp, inet_ntoa(addr)); 
+					
+
+				}
+				return 0;
+			}
+			break;
 		default:
 			{
-				return -1;
+				return -1; 
 			}
 			break;
 	}

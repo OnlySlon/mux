@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	server_tap = mux_ifmgr_add(ctx, "SERVER_TAP0 ", MUX_IF_TAP, "tap0");
+	server_tap = mux_ifmgr_add(ctx, "SERVER_TAP0 ", MUX_IF_TAP, "tap0", 0);
 	if (!server_tap)
 	{
 		clog(info, CMARK, DBG_SYSTEM, "F:%s: SERVER_TAP0  create fail", __FUNCTION__);

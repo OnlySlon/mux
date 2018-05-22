@@ -9,9 +9,14 @@
 #define MUX_UUID_FILE "/etc/mux_uuid"
 #define MUX_UUID_LEN  36
 
+#define MUX_IFNAME_MAXLEN 40
 #define  MUX_PROTONUM 5
 
 #include "mux_proto.h"
+
+
+#define MUX_PACKET_PASS 0x00
+#define MUX_PACKET_DROP 0x01
 
 enum MuxTransportT {
     MUX_TR_RAW = 0,
@@ -171,8 +176,10 @@ typedef struct MUX_IFCONF_PLUGIN_S
 /* transport plugin */
 
 
-#define MUX_TR_OP_SETIF  0x00
-#define MUX_TR_OP_HZ     0x01
+#define MUX_TR_OP_SETIF          0x00   // link transport with interface
+#define MUX_TR_OP_SETGWHW        0x01   // setup gateway hardware address for transport
+#define MUX_TR_OP_SETREMOTE      0x02   // setup remote endpoint address
+#define MUX_TR_OP_HZ             0xFF
 typedef struct MUX_TR_PLUGIN
 {
 	u_int32_t   type;
@@ -254,6 +261,9 @@ typedef struct mux_gwdiscovery_info
 #define MUX_INSTANCE_STAGE_SRV_GOTTUNS    0x02
 
 
+#define MUX_DEVSTAGE_INITIAL 0x00
+#define MUX_DEVSTATE_ATWORK  0x01
+
 typedef struct mux_devinstance
 {
 	int                id;
@@ -274,9 +284,10 @@ typedef struct mux_muxtun
 	u_int32_t          ip_local;
 	u_int32_t          group;
 	u_int32_t          state;
-	MuxTransport      *transport;
+	MuxTransport      *tr;
 	u_int32_t          seq;
 	MuxDevInstance    *device;
+	char               ifname_remote[MUX_IFNAME_MAXLEN];
 	UT_hash_handle     hh; 
 } MuxMuxTun;
 
@@ -288,3 +299,6 @@ enum MuxMuxStates
 	MUX_MUXSTATE_UP,
 };
 
+
+
+#define MUX_TR_F_DSTHW_EXTST (1 << 0)

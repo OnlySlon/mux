@@ -217,6 +217,7 @@
 			<F N="clog.c"/>
 			<F N="mux_cfgutil.c"/>
 			<F N="mux_climain.c"/>
+			<F N="mux_devinstance.c"/>
 			<F N="mux_discovery.c"/>
 			<F N="mux_ether_arpdb.c"/>
 			<F N="mux_ethernet.c"/>

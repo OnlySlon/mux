@@ -47,12 +47,17 @@ typedef struct MuxProto_SeqInfo
 #define MUX_PROTO_SSHAKE_REQUEST 0x01
 #define MUX_PROTO_SSHAKE_REPLY   0x02
 
+#define MUX_PROTO_SSHAKE_F_NONE    0
+#define MUX_PROTO_SSHAKE_F_MASTER  (1 << 0)
 typedef struct MuxProto_handshake
 {
+	u_int8_t    flags;
 	u_int8_t    stage;
-	char        UUID[MUX_UUID_LEN];
+	char        UUID[MUX_UUID_LEN + 1];
+	char        ifname[MUX_IFNAME_MAXLEN + 1];
 	u_int16_t   payload_size;
 	u_int16_t   tunid;
+	u_int16_t   group_id;
 } MuxProtoHandshakeT;
 
 

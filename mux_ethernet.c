@@ -17,6 +17,7 @@
 #include "mux.h"
 
 extern CLOG_INFO *info;
+u_int32_t mode;
 
 
 /* Ethernet output function. VLAN's not supported*/
@@ -41,8 +42,8 @@ int etharp_output(MuxIf_t *netif, char *pkt,
 
 int ethernet_output_ip(MuxIf_t *netif, 
 					   char      *payload,
-					   u_int32_t len,
-					   u_int8_t  payload_proto)
+					   u_int32_t len, 
+					   u_int32_t  flags)
 {
 	struct eth_hdr *eth = (struct eth_hdr *) (payload - IP_HLEN - SIZEOF_ETH_HDR);
 	struct ip_hdr  *ip  = (struct ip_hdr *) (payload - IP_HLEN);
@@ -75,6 +76,15 @@ int ethernet_output_ip(MuxIf_t *netif,
 	memcpy(&eth->src.addr, &netif->hwaddr, ETH_HWADDR_LEN);
 
 
+	if (flags & MUX_TR_F_DSTHW_EXTST) // destination hardware address exist
+	{
+		clog(info, CWARN, DBG_SYSTEM, "F:%s: %s: flags & MUX_TR_F_DSTHW_EXTS", __FUNCTION__, netif->name);
+		ip->_chksum = in_cksum((char *) ip, IP_HLEN);
+		netif->tx_callback(NULL, netif, eth, (len +  IP_HLEN + SIZEOF_ETH_HDR));
+		return 0;
+	}
+
+
 	// test dst address is local
 	MuxIPCfg *gw;
 	MuxIPCfg *ipcfg = mux_ipconf_match4(netif->ip, htonl(ip->dst));
@@ -88,7 +98,7 @@ int ethernet_output_ip(MuxIf_t *netif,
 		local = 1;
 	} else
 	{
-		// Try get default gateway for this interface
+		// Try get default gateway for this interface 
 		gw = mux_ipconf_gw4(netif->ip);
 		if (!gw)
 		{
@@ -126,4 +136,4 @@ int ethernet_output_ip(MuxIf_t *netif,
 
 
 
-
+ 

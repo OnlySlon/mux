@@ -61,6 +61,7 @@ void mux_clihandshake_service_1s(void *ptr)
 	static int init = 1;
 	static   MuxTransport *tr = NULL;
 
+//	return;
 	if (init == 1)
 	{
 		init = 0;
@@ -71,13 +72,14 @@ void mux_clihandshake_service_1s(void *ptr)
 
 		while((dif = mux_ifmgr_it_next()) != NULL)
 		{			
-			if (dif->flags & MUX_IF_F_MASTER ) // do it only on MASTER interface
+			if (!(dif->flags & MUX_IF_F_CLIENT)) // do it only on MASTER interface
 			{
 				char *tmp = malloc(0xFFF);
-				char *pkt = tmp + SIZEOF_ETH_HDR + SIZEOF_IP_HDR;
+				char *pkt = tmp + SIZEOF_ETH_HDR + SIZEOF_IP_HDR; 
 
-				u_int32_t len = mux_proto_ashmhdr(pkt, MUX_PROTO_TPE_HANDSHAKE, MUX_PROTO_F_NOFLAGS, NULL, NULL);
+				u_int32_t len = mux_proto_ashmhdr(pkt, MUX_PROTO_TPE_HANDSHAKE, MUX_PROTO_F_NOFLAGS, NULL, NULL, dif);
 
+				len += SIZEOF_ETH_HDR + SIZEOF_IP_HDR;
 				tr->tr_ctl(tr->priv, MUX_TR_OP_SETIF, dif, sizeof(MuxIf_t));
 				tr->tr_sendto(tr->priv, inet_addr("5.5.5.5"), pkt, len);
 			}
@@ -90,7 +92,7 @@ void mux_clihandshake_service_1s(void *ptr)
 	}
 	// send handhsake packets to server
 
-	exit(0);
+//	exit(0);
 
 	timer_add_ms("CLIHANDSHAKE_SERVICE", 1000, mux_clihandshake_service_1s, NULL );
 }

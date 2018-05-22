@@ -59,14 +59,14 @@ MUX_CLIENT_OBJECTS = clog.o mux_climain.o    mux_ifmanager.o mux_ifreaders.o  \
 		     mux_ifwriters.o mux_ifcfg_manual.o mux_ether_arpdb.o     \
 		     mux_ethernet.o mux_ipconf.o mux_ip.o mux_discovery.o     \
 		     mux_muxtun.o mux_gwdiscovery.o mux_proto.o               \
-		     mux_tr_raw.o
+		     mux_tr_raw.o mux_devinstance.o
 
 MUX_SERVER_OBJECTS = clog.o mux_server.o  mux_ifmanager.o mux_ifreaders.o     \
                      mux_util.o mux_cfgutil.o mux_br_fdb.o timers.o           \
                      mux_ifwriters.o mux_ifcfg_manual.o mux_ether_arpdb.o     \
 		     mux_ethernet.o mux_ipconf.o mux_ip.o mux_discovery.o     \
 		     mux_muxtun.o mux_gwdiscovery.o mux_proto.o               \
-		     mux_tr_raw.o
+		     mux_tr_raw.o mux_devinstance.o
 
 
 mux: ${MUX_CLIENT_OBJECTS} ${LIBPFRING}
